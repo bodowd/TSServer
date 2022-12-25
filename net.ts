@@ -1,10 +1,13 @@
 import * as net from "net";
+import * as wp from "workerpool";
+
+const pool = wp.pool();
 
 const PORT = 3000;
 const IP = "127.0.0.1";
 const BACKLOG = 100;
 
-export interface Request {
+interface Request {
   protocol: string;
   method: string;
   url: string;
@@ -12,7 +15,7 @@ export interface Request {
   body: string;
 }
 
-export interface Response {
+interface Response {
   status: string;
   statusCode: number;
   protocol: string;
@@ -57,7 +60,6 @@ net
     );
 
     socket.on("data", (buffer) => {
-      const request = buffer.toString();
       socket.write(
         compileResponse({
           protocol: "HTTP/1.1",
@@ -67,12 +69,26 @@ net
           body: `<html><body><h1>Greetings</h1></body></html>`,
         })
       );
-      socket.write(fibonacci(50).toString());
-      socket.end();
-      console.log("connection closed");
+      const request = buffer.toString();
+      pool
+        .exec(
+          // have to define fibonacci function here or else
+          // workerpool thinks it's undefined
+          // tried alot to bring it in from a different file
+          // like how the docs showed but got problems with
+          // typescript not allowing imports or not knowing what
+          // .ts file is...
+          function fib(n: number): number {
+            return n < 2 ? n : fib(n - 2) + fib(n - 1);
+          },
+          [45]
+        )
+        .then((res: number) => {
+          socket.write(res.toString());
+          console.log("connection closed");
+          socket.end();
+        })
+        .catch((err: any) => console.log(err))
+        .then(() => pool.terminate());
     });
   });
-
-const fibonacci = (n: number): number => {
-  return n < 2 ? n : fibonacci(n - 2) + fibonacci(n - 1);
-};
