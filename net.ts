@@ -51,12 +51,12 @@ ${r.body}`;
 net
   .createServer()
   .listen(PORT, IP, BACKLOG)
-  .on("connection", (socket) =>
-    socket.on("data", (buffer) => {
-      console.log(
-        `new connection from ${socket.remoteAddress}:${socket.remotePort}`
-      );
+  .on("connection", (socket) => {
+    console.log(
+      `new connection from ${socket.remoteAddress}:${socket.remotePort}`
+    );
 
+    socket.on("data", (buffer) => {
       const request = buffer.toString();
       socket.write(
         compileResponse({
@@ -67,7 +67,12 @@ net
           body: `<html><body><h1>Greetings</h1></body></html>`,
         })
       );
+      socket.write(fibonacci(50).toString());
       socket.end();
       console.log("connection closed");
-    })
-  );
+    });
+  });
+
+const fibonacci = (n: number): number => {
+  return n < 2 ? n : fibonacci(n - 2) + fibonacci(n - 1);
+};
